@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="box_txt_size">24sp</dimen>
+
+    <dimen name="box_text_size">24sp</dimen>
+    <dimen name="box_size">130dp</dimen>
+    <dimen name="margin_simple">16sp</dimen>
 </resources>
