@@ -7,4 +7,7 @@
     <string name="box_five">BoxCinco</string>
     <string name="box_four">BoxQuatro</string>
     <string name="box_three">BoxTres</string>
+    <string name="bt_yelow">Yelow</string>
+    <string name="bt_red">Red</string>
+    <string name="bt_green">Green</string>
 </resources>
