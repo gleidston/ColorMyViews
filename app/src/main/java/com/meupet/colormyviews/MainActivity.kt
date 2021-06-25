@@ -1,11 +1,13 @@
 package com.meupet.colormyviews
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.media.Image
 import android.net.Uri
 import android.os.Build
@@ -19,6 +21,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File
 import java.io.FileOutputStream
@@ -72,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         var yellowButton = findViewById<Button>(R.id.btn_yellow)
         var greenButton = findViewById<Button>(R.id.btn_green)
         var btnTela = findViewById<FloatingActionButton>(R.id.fab)
-
+        var view = findViewById<View>(R.id.parentLayout)
 
 
 
@@ -114,20 +117,77 @@ class MainActivity : AppCompatActivity() {
             boxFiveColor = chanceColor
         }
         btnTela.setOnClickListener {
-            val intent = Intent(Intent.ACTION_SEND)
-            intent.putExtra(Intent.EXTRA_TEXT, "Voce ")
-            intent.type = "image/*"
-            if (intent.resolveActivity(this.packageManager) != null) {
-                startActivity(intent)
-            } else {
-                Toast.makeText(this, "Você não tem um aplicativo compátvel", Toast.LENGTH_LONG)
-            }
+            val bitmap = getViewAsBitmap(view)
+            if (bitmap != null) {
+                saveScreenshot(bitmap, "ScreenshotView")
 
+                if (intent.resolveActivity(this.packageManager) != null) {
+                    //startActivity(intent)
+                    startActivity(Intent.createChooser(intent, "Share with"));
+                } else {
+                    Toast.makeText(this, "Você não tem um aplicativo compátvel", Toast.LENGTH_LONG)
+                }
+
+            }
         }
+
+        // this method saves the image to gallery
+        //-----------------------------------------------------------------------
+
+        // To share Image --------------
+
+
+
+
+
     }
 
 
+    private fun saveScreenshot(imageBitmap: Bitmap, filename: String) {
+        val dirPath = applicationContext.filesDir
+        val file = File(dirPath, "$filename.jpg")
+        val fileOutputStream = FileOutputStream(file)
+        try {
+            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 85, fileOutputStream)
+            fileOutputStream.apply {
+                flush()
+                close()
+            }
+            val imageUri = FileProvider.getUriForFile(
+                this@MainActivity,
+                "com.devventure.colormyviews.provider",
+                file
+            )
+            shareImageUri(imageUri)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    @SuppressLint("QueryPermissionsNeeded")
+    private fun shareImageUri(uri: Uri) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            putExtra(Intent.EXTRA_STREAM, uri)
+            type = "image/*"
+        }
+        applicationContext?.packageManager?.run {
+            if (shareIntent.resolveActivity(this) != null)
+                startActivity(Intent.createChooser(shareIntent, "Share images to.."))
+            else
+                Toast.makeText(applicationContext, "Impossível executar", Toast.LENGTH_LONG).show()
+        }
+    }
 
+    private fun getViewAsBitmap(mView: View): Bitmap? {
+        val bitmap = Bitmap.createBitmap(mView.width, mView.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val bgDraw = mView.background
+        if (bgDraw != null)
+            bgDraw.draw(canvas)
+        else
+            canvas.drawColor(Color.WHITE)
+        mView.draw(canvas)
+        return bitmap
+    }
     override fun onStop() {
         super.onStop()
 
@@ -142,76 +202,4 @@ class MainActivity : AppCompatActivity() {
         editor.commit()
 
     }
-    // this method saves the image to gallery
-    //-----------------------------------------------------------------------
-    fun getBitMapFromView(view: ImageView):Bitmap? {
-        val bitmap =
-            Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        view.draw(canvas)
-        return bitmap
-    }
-
-
-    private fun saveMediaToStorage(bitmap: Bitmap) {
-        // Generating a file name
-        val filename = "${System.currentTimeMillis()}.jpg"
-
-        // Output stream
-        var fos: OutputStream? = null
-
-        // For devices running android >= Q
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // getting the contentResolver
-            this.contentResolver?.also { resolver ->
-
-                // Content resolver will process the contentvalues
-                val contentValues = ContentValues().apply {
-
-                    // putting file information in content values
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpg")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-                }
-
-                // Inserting the contentValues to
-                // contentResolver and getting the Uri
-                val imageUri: Uri? = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-
-                // Opening an outputstream with the Uri that we got
-                fos = imageUri?.let { resolver.openOutputStream(it) }
-            }
-        } else {
-            // These for devices running on android < Q
-            val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-            val image = File(imagesDir, filename)
-            fos = FileOutputStream(image)
-        }
-
-        fos?.use {
-            // Finally writing the bitmap to the output stream that we opened
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
-            Toast.makeText(this , "Captured View and saved to Gallery" , Toast.LENGTH_SHORT).show()
-        }
-    }
-    private fun getScreenShotFromView(v: View?): Bitmap? {
-        // create a bitmap object
-        var screenshot: Bitmap? = null
-        try {
-            // inflate screenshot object
-            // with Bitmap.createBitmap it
-            // requires three parameters
-            // width and height of the view and
-            // the background color
-            screenshot = Bitmap.createBitmap(v!!.measuredWidth, v.measuredHeight, Bitmap.Config.ARGB_8888)
-            // Now draw this bitmap on a canvas
-            val canvas = Canvas(screenshot)
-            v.draw(canvas)
-        } catch (e: Exception) {
-            Log.e("GFG", "Failed to capture screenshot because:" + e.message)
-        }
-        // return the bitmap
-        return screenshot
-    }
-
 }
